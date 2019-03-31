@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/integration"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:beans="http://www.springframework.org/schema/beans"
+        xmlns:int-http="http://www.springframework.org/schema/integration/http"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/integration/http 
+        http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+        http://www.springframework.org/schema/integration
+        http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+<channel id="receiveorderChannel" />
+<channel id="rejectorderChannel" />
+<channel id="checkstockChannel" />
+<channel id="paymentChannel" />
+<channel id="supplierorderChannel" />
+<channel id="shippingChannel" />
+<channel id="terminatorChannel" />
+<channel id="dhlChannel" />
+<channel id="fedexChannel" />
+
+
+<filter input-channel="receiveorderChannel"
+		output-channel="checkstockChannel"
+		ref="orderAmountFilter"
+		method="filter"
+		discard-channel="rejectorderChannel"/>
+		
+<filter input-channel="checkstockChannel"
+		output-channel="paymentChannel"
+		ref="checkStockFilter"
+		method="filter"
+		discard-channel="supplierorderChannel"/>
+		
+<filter input-channel="paymentChannel"
+		output-channel="shippingChannel"
+		ref="paymentFilter"
+		method="filter"
+		discard-channel="terminatorChannel"/>
+		
+<router method="route" input-channel="shippingChannel">
+  	<beans:bean class="com.spring.integration.router.ShippingRouter"/>
+</router>
+		
+<service-activator input-channel="rejectorderChannel"
+					ref="rejectedOrderHandler"
+					method="handleRequest"/>
+					
+<service-activator input-channel="supplierorderChannel"
+					ref="supplierOrderService"
+					method="handleRequest"/>
+					
+<service-activator input-channel="terminatorChannel"
+					ref="orderTerminatorService"
+					method="handleRequest"/>
+					
+<service-activator input-channel="dhlChannel"
+					ref="dhlShippingService"
+					method="handleRequest"/>
+					
+<service-activator input-channel="fedexChannel"
+					ref="fedexShippingService"
+					method="handleRequest"/>
+
+  					 
+<!-- poller default="true" fixed-delay="50" / -->
+
+  <beans:bean id="rejectedOrderHandler" class="com.spring.integration.service.RejectedOrderHandler"/>
+  <beans:bean id="supplierOrderService" class="com.spring.integration.service.SupplierOrderService"/>
+  <beans:bean id="orderTerminatorService" class="com.spring.integration.service.OrderTerminatorService"/>
+  <beans:bean id="dhlShippingService" class="com.spring.integration.service.DhlShippingService"/>
+  <beans:bean id="fedexShippingService" class="com.spring.integration.service.FedexShippingService"/>
+  <beans:bean id="orderAmountFilter" class="com.spring.integration.filter.OrderAmountFilter"/>
+  <beans:bean id="checkStockFilter" class="com.spring.integration.filter.CheckStockFilter"/>
+  <beans:bean id="paymentFilter" class="com.spring.integration.filter.PaymentFilter"/>
+  
+
+</beans:beans>
